@@ -17,9 +17,9 @@ import tempfile
 
 OPENSSL_CNF="""
 [ req ]
-default_bits		= 2048
-default_md		= sha256
-distinguished_name	= req_distinguished_name
+default_bits  = 2048
+default_md  = sha256
+distinguished_name = req_distinguished_name
 prompt = no
 %(req)s
 
@@ -47,7 +47,7 @@ subjectAltName = @alt_names
 """
 
 SAN_REQ = """
-x509_extensions	= v3_ca	# The extentions to add to the self signed cert
+x509_extensions = v3_ca # The extentions to add to the self signed cert
 req_extensions = v3_req # The extensions to add to a certificate request
 """
 
