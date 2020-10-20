@@ -13,9 +13,15 @@
 # http://www.mail-archive.com/openssl-users@openssl.org/msg47641.html
 
 import os,sys,stat,shutil
+import argparse
 import subprocess
 import tempfile
 
+class GencertArgumentParser(argparse.ArgumentParser):
+    def error(self, message):
+        sys.stderr.write('error: %s\n\n' % message)
+        self.print_help()
+        sys.exit(1)
 
 OPENSSL_CNF="""
 [ req ]
@@ -72,14 +78,14 @@ def run(args):
         raise Exception('Error running %s'%args)
 
 if __name__=="__main__":
-    names = sys.argv[1:]
-    if not names:
-        print "Usage: gencert hostname [hostname...]"
-        print
-        print "  Please provide at least one hostname on the command line."
-        print "  Mulitple hostnames may be provided to generate a SAN request."
-        print
-        sys.exit(1)
+
+    parser = GencertArgumentParser(description="Generate an SSL Certificate and CSR")
+    parser.add_argument('-d', '--directory', help='Location to write the key/cert/csr')
+    parser.add_argument('hostname', nargs='+', help="Hostname to generate the certificate for. Mulitple hostnames may be provided to generate a SAN request.")
+    args = parser.parse_args()
+
+
+    names = args.hostname
 
     params = dict(req='', dn='', alt='', bits='2048')
 
@@ -95,9 +101,9 @@ if __name__=="__main__":
 
     params['cn']='CN=%s'%names[0]
 
-    keyfile = '/etc/pki/tls/private/%s%s.key' % (names[0], sanfn)
-    crtfile = '/etc/pki/tls/certs/%s%s.cert' % (names[0], sanfn)
-    csrfile = '/etc/pki/tls/certs/%s%s.csr' % (names[0], sanfn)
+    keyfile = '%s/%s%s.key' % ( ('/etc/pki/tls/private', args.directory ) [args.directory is not None], names[0], sanfn)
+    crtfile = '%s/%s%s.cert' % ( ('/etc/pki/tls/certs', args.directory) [args.directory is not None], names[0], sanfn)
+    csrfile = '%s/%s%s.csr' % ( ('/etc/pki/tls/certs', args.directory) [args.directory is not None], names[0], sanfn)
 
     if os.path.exists(crtfile):
         print "Certificate file exists, aborting"
@@ -108,6 +114,19 @@ if __name__=="__main__":
         print "Certificate request file exists, aborting"
         print "  ", csrfile
         sys.exit(1)
+
+    if args.directory is not None:
+        if not os.path.exists(args.directory):
+            print 'Creating %s' % args.directory
+            try:
+                os.mkdir(args.directory)
+            except OSError as msg:
+                print 'error: unable to create %s\n' % args.directory
+                print msg
+                sys.exit(1)
+        elif not os.path.isdir(args.directory):
+            print 'error: %s exists and is not a directory\n' % args.directory
+            sys.exit(1)
 
     tmpdir = tempfile.mkdtemp()
     cnffile = '%s/openssl.cnf' % tmpdir
